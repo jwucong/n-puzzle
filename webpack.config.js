@@ -13,10 +13,10 @@ module.exports = {
   output: {
     path: resolve('dist'),
     filename: 'puzzle.js',
-    library: 'puzzle',
+    library: 'Puzzle',
     libraryTarget: 'umd',
     libraryExport: "default",
-    globalObject: 'this'
+    globalObject: 'window'
   },
   devtool: "source-map",
   module: {
@@ -102,6 +102,7 @@ module.exports = {
     }),
     new HtmlWebpackPlugin({
       template: './src/index.html',
+      inject: 'head',
       minify: {
         collapseWhitespace: false,
         removeComments: false
