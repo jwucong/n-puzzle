@@ -1,28 +1,59 @@
 import './puzzle.scss';
+import bgImage from './pic.jpg';
 
-import { find, setStyle, random, shuffle } from './utils';
+import {
+	getType,
+	kebabCase,
+	hasClass,
+	addClass,
+	removeClass,
+	swap,
+	random,
+	shuffle,
+	solvable,
+	toSolvable
+} from './utils';
 
-function exec(callback) {
-	const args = slice.call(arguments, 1);
-	typeof callback === 'function' && callback.apply(this, args);
-}
+const isElement = value => {
+	const reg = /^HTML(.+)Element$/;
+	const match = reg.exec(getType(value));
+	return match && match[1] !== 'Unknown';
+};
+
+const setStyle = (element, style) => {
+	for (const key in style) {
+		if (Object.prototype.hasOwnProperty.call(style, key)) {
+			const prop = kebabCase(key);
+			element.style[prop] = style[key];
+		}
+	}
+};
+
+const tileClassName = 'tile-item';
+const activeTileClassName = 'tile-item-active';
+const blankTileClassName = 'tile-item-blank';
 
 class Puzzle {
 	constructor(container, options) {
 		const defaultOptions = {
-			width: 3, // remarks: n * n puzzle, n >= 3, width = n
-			blank: false, // <Number:index> | <String:random> | <Boolean:false> true as 8
+			width: 4, // remarks: n * n puzzle, n >= 3, width = n
+			blank: '', // <Number:index> | <String:random> | <Boolean:false> true as 8
 			image: '',
+			gridSelector: '.tile-list',
 			blankBackground: '#f7f7f7',
 			start: null,
-			success: null,
-			exchangeStart: null,
-			exchangeEnd: null
+			solved: null,
+			swapStart: null,
+			swapEnd: null
 		};
-		this.options = Object.assign({}, defaultOptions, options);
+		const conf = Object.assign({}, defaultOptions, options);
+		const width = conf.width;
+		const square = width * width;
+		this.options = conf;
 		this.container = this.find(container);
-		this.grid = this.find('.tile-list');
-		this.initialList = [];
+		this.grid = this.find(conf.gridSelector);
+		this.blankModel = getBlankModel(conf.blank, width);
+		this.initialList = [...new Array(square)].map((item, i) => i);
 		this.shuffleList = [];
 		this.tileList = [];
 		this.tileWidth = 0;
@@ -31,78 +62,220 @@ class Puzzle {
 		this.layout();
 	}
 
-	find(selector) {
-		return find(selector, this.container || document);
+	find(selector, scope) {
+		if (isElement(selector)) {
+			return selector;
+		}
+		const el = scope || this.container || document;
+		return el.querySelector(selector);
 	}
 
 	layout() {
 		const grid = this.grid;
 		const conf = this.options;
-		const isBlankModel =
-			parseInt(conf.blank, 10) + 1 > 0 || conf.blank === 'random';
 		const width = parseInt(conf.width, 10);
 		const tileWidth = Math.floor(grid.offsetWidth / width);
 		const tileHeight = tileWidth;
 		const fragment = document.createDocumentFragment();
+		const image = conf.image;
 		const initialStyle = {
 			width: tileWidth + 'px',
 			height: tileHeight + 'px',
-			lineHeight: tileHeight + 'px',
-			backgroundImage: `url("${conf.image}")`
+			lineHeight: tileHeight + 'px'
 		};
+		if (image) {
+			initialStyle.backgroundImage = `url("${image}")`;
+		}
 
 		this.tileList = [];
-		this.initialList = [];
 		this.tileWidth = tileWidth;
 		this.tileHeight = tileHeight;
 
 		grid.style.width = tileWidth * width + 'px';
 		grid.style.height = tileHeight * width + 'px';
 
-		for (let row = 0; row < width; row++) {
-			for (let column = 0; column < width; column++) {
-				const order = row * width + column;
-				const tile = document.createElement('div');
-				const top = row * tileHeight;
-				const left = column * tileWidth;
-				let text = order + 1;
-				let style = Object.assign({}, initialStyle, {
-					top: top + 'px',
-					left: left + 'px',
-					backgroundPosition: -left + 'px ' + -top + 'px'
-				});
-				if (isBlankModel && order === width * width - 1) {
-					style.background = conf.blankBackground;
-					tile.classList.add('tile-item-blank');
-					text = '';
-				}
-				tile.classList.add('tile-item');
-				tile.innerText = text;
-				setStyle(tile, style);
-				this.initialList.push(order);
-				this.tileList.push(tile);
-				fragment.appendChild(tile);
+		this.initialList.forEach(item => {
+			const points = getPoints(item, width);
+			const tile = document.createElement('div');
+			const top = points.row * tileHeight;
+			const left = points.column * tileWidth;
+			let innerText = item + 1;
+			let style = Object.assign({}, initialStyle, {
+				top: top + 'px',
+				left: left + 'px',
+				backgroundPosition: -left + 'px ' + -top + 'px'
+			});
+
+			if (this.blankModel && item === width * width - 1) {
+				style.background = conf.blankBackground;
+				tile.classList.add(blankTileClassName);
+				innerText = '';
 			}
-		}
+
+			if (!image) {
+				tile.innerText = innerText;
+			}
+
+			setStyle(tile, style);
+			tile.classList.add(tileClassName);
+			tile.setAttribute('index', item);
+			this.tileList.push(tile);
+			fragment.appendChild(tile);
+		});
 
 		grid.innerHTML = '';
 		grid.appendChild(fragment);
 	}
 
 	start() {
+		this.stepCount = 0;
 		const conf = this.options;
-		const width = conf.width;
-		const shuffleList = shuffle(this.initialList);
-		if (!conf.blank) {
-			this.shuffleList = shuffleList;
+		const n = conf.width;
+		const tileWidth = this.tileWidth;
+		const tileHeight = this.tileHeight;
+		const blank = this.blankModel;
+		const initialList = this.initialList;
+		let shuffleList;
+		if (blank) {
+			const order = blank === 'random' ? random(0, n * n - 1) : blank - 1;
+			const items = initialList.filter(item => item !== order);
+			const blankRowCountingFromBottom = n - Math.floor(order / n);
+			const list = shuffle(items);
+			const isSolvable = solvable(list, n, blankRowCountingFromBottom);
+			const solvableList = isSolvable ? list : toSolvable(list);
+			shuffleList = solvableList.concat(order);
 		} else {
+			shuffleList = shuffle(initialList);
 		}
-		const blank = parseInt(conf.blank, 10) || 'random';
-		const blankIndex =
-			blank === 'random' ? random(0, width * width - 1) : blank - 1;
-		const blankRowCountingFromBottom = width - Math.floor(blankIndex / width);
-		// TODO shuffle when is blank model and check solvable
+		this.shuffleList = shuffleList;
+		this.tileList.forEach((tile, index) => {
+			this.setPosition(tile, index);
+		});
+		this.destroy();
+		this._gridClickHandler = tileClickHandler(this);
+		this.grid.addEventListener('click', this._gridClickHandler, false);
+		exec.call(this, conf.start, this.stepCount);
 	}
+
+	setPosition(el, index) {
+		const order = this.shuffleList[index];
+		const points = getPoints(order, this.options.width);
+		const tileWidth = this.tileWidth;
+		const tileHeight = this.tileHeight;
+		el.style.top = points.row * tileHeight + 'px';
+		el.style.left = points.column * tileWidth + 'px';
+	}
+
+	isNeighbor(fromIndex, toIndex) {
+		const width = this.options.width;
+		const shuffleList = this.shuffleList;
+		const order1 = shuffleList[fromIndex];
+		const order2 = shuffleList[toIndex];
+		const p1 = getPoints(order1, width);
+		const p2 = getPoints(order2, width);
+		const r1 = p1.row;
+		const r2 = p2.row;
+		const c1 = p1.column;
+		const c2 = p2.column;
+		const hNeighbor = r1 === r2 && Math.abs(c1 - c2) === 1;
+		const vNeighbor = c1 === c2 && Math.abs(r1 - r2) === 1;
+		return hNeighbor || vNeighbor;
+	}
+
+	swapTile(fromIndex, toIndex) {
+		const fromTile = this.tileList[fromIndex];
+		const toTile = this.tileList[toIndex];
+		this.setPosition(fromTile, toIndex);
+		this.setPosition(toTile, fromIndex);
+		swap(this.shuffleList, fromIndex, toIndex);
+	}
+
+	destroy() {
+		const handler = this._gridClickHandler;
+		if (handler) {
+			this.grid.removeEventListener('click', handler);
+			this._gridClickHandler = null;
+		}
+	}
+}
+
+function getPoints(index, width) {
+	const row = Math.floor(index / width);
+	const column = index % width;
+	return { row, column };
+}
+
+function getBlankModel(blank, width) {
+	if (blank === 'random') {
+		return blank;
+	}
+	const n = parseInt(blank, 10);
+	return n > 0 && n <= width * width ? n : false;
+}
+
+function exec(callback) {
+	const args = [].slice.call(arguments, 1);
+	typeof callback === 'function' && callback.apply(this, args);
+}
+
+function tileClickHandler(instance) {
+	const initialList = instance.initialList;
+	const shuffleList = instance.shuffleList;
+	const blankModel = instance.blankModel;
+	const conf = instance.options;
+	const initialStr = initialList.join('');
+	let solved = false;
+	let moving = false;
+	return function handler(event) {
+		const that = this;
+		const el = event.target;
+		const started = initialList.length === shuffleList.length;
+		const isTile = hasClass(el, tileClassName);
+		let fromIndex,
+			toIndex,
+			activeTile = null;
+		if (!isTile || !started || solved || moving) {
+			return false;
+		}
+		if (blankModel) {
+			if (hasClass(el, blankTileClassName)) {
+				return false;
+			}
+			activeTile = instance.find.call(instance, '.' + blankTileClassName);
+		} else {
+			activeTile = instance.find.call(instance, '.' + activeTileClassName);
+			if (!activeTile) {
+				return addClass(el, activeTileClassName);
+			}
+			if (el === activeTile) {
+				return removeClass(el, activeTileClassName);
+			}
+		}
+		fromIndex = activeTile.getAttribute('index');
+		toIndex = el.getAttribute('index');
+		if (!instance.isNeighbor(fromIndex, toIndex)) {
+			return removeClass(activeTile, activeTileClassName);
+		}
+		moving = true;
+		el.addEventListener(
+			'transitionend',
+			function transitionEnd() {
+				moving = false;
+				instance.stepCount++;
+				removeClass(activeTile, activeTileClassName);
+				exec.call(instance, conf.swapEnd, instance.stepCount);
+				if (solved) {
+					that.removeEventListener('click', handler);
+					exec.call(instance, conf.solved, instance.stepCount);
+				}
+				this.removeEventListener('transitionend', transitionEnd);
+			},
+			false
+		);
+		exec.call(instance, conf.swapStart, instance.stepCount);
+		instance.swapTile(fromIndex, toIndex);
+		solved = initialStr === shuffleList.join('');
+	};
 }
 
 export default Puzzle;

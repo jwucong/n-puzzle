@@ -71,6 +71,14 @@ module.exports = {
           },
         ]
       },
+      {
+        test: /\.(bmp|png|jpe?g|gif|svg)(\?.*)?$/,
+        loader: 'url-loader',
+        options: {
+          limit: 1,
+          name: 'images/[name].[ext]'
+        }
+      }
     ]
   },
   optimization: {

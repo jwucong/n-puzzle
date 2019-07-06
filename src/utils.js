@@ -2,33 +2,11 @@ export const getType = value => {
 	return Object.prototype.toString.call(value).slice(8, -1);
 };
 
-export const isElement = value => {
-	const reg = /^HTML(.+)Element$/;
-	const match = reg.exec(getType(value));
-	return match && match[1] !== 'Unknown';
-};
-
-export const find = (selector, scope) => {
-	if (isElement(selector)) {
-		return selector;
-	}
-	return (scope || document).querySelector(selector);
-};
-
 export const kebabCase = (str, separator = '-') => {
 	const reg = /[A-Z]/g;
 	return str.replace(reg, (m, i) => {
 		return (i > 0 ? separator + m : m).toLowerCase();
 	});
-};
-
-export const setStyle = (element, style) => {
-	for (const key in style) {
-		if (Object.prototype.hasOwnProperty.call(style, key)) {
-			const prop = kebabCase(key);
-			element.style[prop] = style[key];
-		}
-	}
 };
 
 export const random = (min, max) => {
@@ -72,7 +50,7 @@ export const solvable = (array, n, blankRowCountingFromBottom) => {
 	if (isEven(n)) {
 		return isEven(blankRowCountingFromBottom) ? !flag : flag;
 	}
-	return !flag;
+	return flag;
 };
 
 export const toSolvable = shuffleList => {
@@ -86,4 +64,20 @@ export const toSolvable = shuffleList => {
 		}
 	}
 	return swap(list, 0, 1);
+};
+
+export const hasClass = (el, className) => {
+	return el.classList.contains(className);
+};
+
+export const addClass = (el, className) => {
+	if (!hasClass(el, className)) {
+		el.classList.add(className);
+	}
+};
+
+export const removeClass = (el, className) => {
+	if (hasClass(el, className)) {
+		el.classList.remove(className);
+	}
 };

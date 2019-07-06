@@ -11,11 +11,38 @@
 
 <div class="puzzle">
   <div class="tile-list"></div>
+
 </div>
+<div class="step">步数: <span class="count">0</span></div>
+
+<a class="start" href="javascript:;">开始</a>
+
 <script>
 
-  const puzzle = new Puzzle('.puzzle')
+  var count = document.querySelector('.count')
+  var startBtn = document.querySelector('.start')
+  const puzzle = new Puzzle('.puzzle', {
+    width: 4,
+    blank: 16,
+    solved: function (step) {
+      alert(step)
+      startBtn.classList.remove('playing')
+      startBtn.innerText = '开始'
+    },
+    swapEnd: function (step) {
+      count.innerText = step
+    }
+  })
   console.log(puzzle)
+
+  startBtn.addEventListener('click', function (event) {
+    if(this.classList.contains('playing')) {
+      return false
+    }
+    this.classList.add('playing')
+    this.innerText = '游戏中...'
+    puzzle.start.call(puzzle)
+  }, false)
 
 </script>
 </body>
