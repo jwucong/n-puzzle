@@ -37,10 +37,9 @@ class Puzzle {
 	constructor(container, options) {
 		const defaultOptions = {
 			width: 4, // remarks: n * n puzzle, n >= 3, width = n
-			blank: '', // <Number:index> | <String:random> | <Boolean:false> true as 8
+			blank: true, // <Number:order> | <String:random> | <Boolean> true as 'last'
 			image: '',
-			gridSelector: '.tile-list',
-			blankBackground: '#f7f7f7',
+			grid: '.tile-list',
 			start: null,
 			solved: null,
 			swapStart: null,
@@ -51,7 +50,7 @@ class Puzzle {
 		const square = width * width;
 		this.options = conf;
 		this.container = this.find(container);
-		this.grid = this.find(conf.gridSelector);
+		this.grid = this.find(conf.grid);
 		this.blankModel = getBlankModel(conf.blank, width);
 		this.initialList = [...new Array(square)].map((item, i) => i);
 		this.shuffleList = [];
@@ -107,7 +106,6 @@ class Puzzle {
 			});
 
 			if (this.blankModel && item === width * width - 1) {
-				style.background = conf.blankBackground;
 				tile.classList.add(blankTileClassName);
 				innerText = '';
 			}
@@ -206,11 +204,15 @@ function getPoints(index, width) {
 }
 
 function getBlankModel(blank, width) {
+	const s = width * width;
+	if (typeof blank === 'boolean') {
+		return blank ? s : false;
+	}
 	if (blank === 'random') {
 		return blank;
 	}
 	const n = parseInt(blank, 10);
-	return n > 0 && n <= width * width ? n : false;
+	return n > 0 && n <= s ? n : false;
 }
 
 function exec(callback) {

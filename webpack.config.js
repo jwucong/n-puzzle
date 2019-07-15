@@ -106,7 +106,7 @@ module.exports = {
     }),
     new CleanWebpackPlugin(),
     new MiniCssExtractPlugin({
-      filename: 'css/[name].css'
+      filename: 'css/puzzle.css'
     }),
     new HtmlWebpackPlugin({
       template: './src/index.html',

@@ -1,8 +1,8 @@
 {
-  "name": "n-puzzle",
+  "name": "puzzle",
   "version": "1.0.0",
-  "description": "n-puzzle",
-  "main": "index.js",
+  "description": "puzzle",
+  "keyword": "puzzle n-puzzle",
   "scripts": {
     "start": "node ./dev-server.js",
     "build": "webpack --config webpack.config.js",

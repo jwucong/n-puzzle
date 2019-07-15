@@ -22,6 +22,9 @@
       font-size: 24px;
       color: #999;
       transition: all 0.35s;
+      &.tile-item-blank {
+        background-color: #f7f7f7;
+      }
       &.tile-item-active {
         color: #fff;
         background-color: deeppink;
