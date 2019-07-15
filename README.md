@@ -2,8 +2,20 @@
   > 正方形数字推盘、拼图小游戏
   
   
+### 0. demo
+ ![demo](src/demo.gif)
+ 
+### 1. Development and build
+  ```shell
+  # development
+  npm install
+  npm start
   
-### 1. Instantiation 
+  # build
+  npm run build
+  ```
+  
+### 2. Instantiation 
   **new Puzzle(container[, options])**
   1. **container:** an HTMLElement or a css selector
   2. **options:** Object  
@@ -33,8 +45,8 @@
      }
      ```
  
-### 2. 使用
-   1. ES5: [请查看](src/index.html) 
-   2. ES6: 直接岛入src/puzzle.js
+### 3. How to use
+   1. ES5: [see here](src/index.html) 
+   2. ES6: import Puzzle from 'src/puzzle.js'
     
 
