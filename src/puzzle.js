@@ -32,13 +32,18 @@ const setStyle = (element, style) => {
 const tileClassName = 'tile-item';
 const activeTileClassName = 'tile-item-active';
 const blankTileClassName = 'tile-item-blank';
+const images = []
+for (let i = 0; i <= 3; i++) {
+  images.push(require(`./puzzle${i}.jpg`))
+}
 
 class Puzzle {
 	constructor(container, options) {
 		const defaultOptions = {
-			width: 4, // remarks: n * n puzzle, n >= 3, width = n
-			blank: true, // <Number:order> | <String:random> | <Boolean> true as 'last'
-			image: '',
+			width: 4,
+			blank: 2,
+      blnakBackground: '#f7f7f7',
+			images: images,
 			grid: '.tile-list',
 			start: null,
 			solved: null,
@@ -58,6 +63,8 @@ class Puzzle {
 		this.tileWidth = 0;
 		this.tileHeight = 0;
 		this.stepCount = 0;
+		this.imageIndex = 0
+		this.currentImage = conf.images[0] || ''
 		this.layout();
 	}
 
@@ -76,7 +83,7 @@ class Puzzle {
 		const tileWidth = Math.floor(grid.offsetWidth / width);
 		const tileHeight = tileWidth;
 		const fragment = document.createDocumentFragment();
-		const image = conf.image;
+		const image = this.currentImage;
 		const initialStyle = {
 			width: tileWidth + 'px',
 			height: tileHeight + 'px',
@@ -108,6 +115,7 @@ class Puzzle {
 			if (this.blankModel && item === width * width - 1) {
 				tile.classList.add(blankTileClassName);
 				innerText = '';
+				style.background = conf.blnakBackground
 			}
 
 			if (!image) {
@@ -154,6 +162,22 @@ class Puzzle {
 		this.grid.addEventListener('click', this._gridClickHandler, false);
 		exec.call(this, conf.start, this.stepCount);
 	}
+
+	reset() {
+	  this.destroy()
+    this.layout()
+  }
+
+	changeImage() {
+	  const images = this.options.images
+    const lastIndex = images.length - 1
+    const currentIndex = this.imageIndex
+    const nextIndex = currentIndex + 1
+    const index = nextIndex > lastIndex ? 0 : nextIndex
+    this.imageIndex = index
+    this.currentImage = images[index]
+    this.layout()
+  }
 
 	setPosition(el, index) {
 		const order = this.shuffleList[index];
